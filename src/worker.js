@@ -3,9 +3,12 @@
 // este código só roda para rotas sem arquivo correspondente.
 
 const CATEGORIAS = [
-  'PONTO', 'ATRASO', 'FALTA', 'CONDUTA', 'INSUBORDINACAO',
-  'ERRO OPERACIONAL', 'PREJUIZO', 'ATENDIMENTO', 'USO INDEVIDO',
-  'SEGURANCA', 'CORRECAO ADMINISTRATIVA', 'OUTROS'
+  'PONTO', 'ATRASO', 'FALTA', 'ABANDONO DE POSTO', 'CONDUTA', 'INSUBORDINACAO',
+  'ERRO OPERACIONAL', 'NEGLIGENCIA', 'DESCUMPRIMENTO DE NORMA', 'ALCADA/APROVACAO',
+  'FALHA DE COMUNICACAO', 'ATRASO DE ENTREGA', 'PREJUIZO FINANCEIRO', 'DANO A VEICULO',
+  'ATENDIMENTO/PESQUISA', 'USO INDEVIDO DE VEICULO', 'USO INDEVIDO DE SISTEMA/SENHA',
+  'USO DE CELULAR', 'SEGURANCA/EPI', 'UNIFORME/APRESENTACAO', 'AUSENCIA EM TREINAMENTO',
+  'CORRECAO ADMINISTRATIVA'
 ];
 
 export default {
@@ -35,12 +38,17 @@ async function analyze(request, env) {
     .filter(i => i.text.length >= 4);
 
   const system = `Você classifica motivos de medidas disciplinares de RH de um grupo de concessionárias de veículos no Brasil.
-Para cada item, atribua EXATAMENTE UMA categoria desta lista (use a grafia exata):
+Para cada item, atribua EXATAMENTE UMA categoria. Prefira SEMPRE uma desta lista (grafia exata):
 ${CATEGORIAS.join(', ')}.
-Regras:
-- "PONTO" cobre ajustes e marcações irregulares de ponto; "ATRASO" cobre chegar atrasado.
-- Pedidos de alterar nome, prazo, parcelas ou qualidade de arquivo são "CORRECAO ADMINISTRATIVA".
-- Use "OUTROS" apenas se nenhuma categoria couber.
+Guia rápido:
+- "PONTO" = ajustes/marcações irregulares de ponto; "ATRASO" = chegar atrasado ao trabalho.
+- "ALCADA/APROVACAO" = agir sem aprovação do gestor (preço, desconto, liberação).
+- "ATRASO DE ENTREGA" = atraso na entrega de veículo/serviço ao cliente.
+- "ATENDIMENTO/PESQUISA" = falha com cliente ou nota baixa em pesquisa da montadora (CSI).
+- "NEGLIGENCIA" = deixar processo parado, não acompanhar, esquecer.
+- Pedidos de corrigir nome, prazo, parcelas ou arquivo = "CORRECAO ADMINISTRATIVA".
+Se NENHUMA categoria da lista couber de verdade, crie você uma palavra-chave nova: 1 a 3 palavras, MAIÚSCULAS, sem acentos, específica ao fato (ex: "FUMAR EM SERVICO", "BRIGA ENTRE COLEGAS").
+É PROIBIDO responder com termos vazios como OUTROS, DIVERSOS, GERAL, VARIADOS, NAO CLASSIFICADO — sempre existe algo específico a dizer sobre o fato.
 Responda SOMENTE com JSON no formato {"results":[{"id":"...","cat":"..."}]} sem texto adicional.`;
 
   const resp = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -73,10 +81,10 @@ Responda SOMENTE com JSON no formato {"results":[{"id":"...","cat":"..."}]} sem 
     return json({ error: 'Resposta da IA não é JSON válido.' }, 502);
   }
 
-  const valid = new Set(CATEGORIAS);
+  const GENERICOS = new Set(['OUTROS','OUTRO','DIVERSOS','GERAL','VARIADOS','NAO CLASSIFICADO','SEM CATEGORIA','N/A','NA']);
   const results = (parsed.results || [])
-    .filter(r => r?.id && valid.has(String(r.cat || '').toUpperCase()))
-    .map(r => ({ id: r.id, cat: String(r.cat).toUpperCase() }));
+    .map(r => ({ id: r?.id, cat: String(r?.cat || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9 \/]/g,'').trim().slice(0, 32) }))
+    .filter(r => r.id && r.cat && r.cat.length >= 3 && !GENERICOS.has(r.cat));
 
   return json({ results });
 }

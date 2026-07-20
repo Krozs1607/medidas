@@ -493,7 +493,12 @@ function renderInsights(data, k){
 function renderIA(data){
   const cats = new Map();
   data.forEach(r => { const c = iaCache[hashText(r.motivo)]; if(c) cats.set(c,(cats.get(c)||0)+1); });
-  const entries = [...cats.entries()].sort((a,b)=>b[1]-a[1]);
+  let entries = [...cats.entries()].sort((a,b)=>b[1]-a[1]);
+  if(entries.length > 13){
+    const resto = entries.slice(12);
+    entries = entries.slice(0,12);
+    entries.push([`DEMAIS (${resto.length} categorias)`, resto.reduce((a,e)=>a+e[1],0)]);
+  }
   const el = document.getElementById('chIA');
   if(!entries.length){ if(charts.chIA){charts.chIA.destroy();delete charts.chIA;} el.style.display='none'; return; }
   el.style.display='';
@@ -504,8 +509,8 @@ function renderIA(data){
 }
 
 function hashText(s){ let h=0; for(let i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))|0;} return 'm'+(h>>>0).toString(36); }
-function loadCache(){ try{ iaCache = JSON.parse(localStorage.getItem('disc_ia_cache')||'{}'); }catch(e){ iaCache={}; } }
-function saveCache(){ try{ localStorage.setItem('disc_ia_cache', JSON.stringify(iaCache)); }catch(e){} }
+function loadCache(){ try{ iaCache = JSON.parse(localStorage.getItem('disc_ia_cache_v2')||'{}'); }catch(e){ iaCache={}; } }
+function saveCache(){ try{ localStorage.setItem('disc_ia_cache_v2', JSON.stringify(iaCache)); }catch(e){} }
 
 async function analisarIA(){
   const btn = document.getElementById('btnIA'), st = document.getElementById('iaStatus');
@@ -524,24 +529,36 @@ async function analisarIA(){
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Analisando…';
   prog.style.display='block'; st.classList.remove('err');
-  const BATCH = 40; let done = 0;
-  try{
-    for(let i=0; i<pend.length; i+=BATCH){
-      const lote = pend.slice(i, i+BATCH);
-      st.textContent = `Classificando ${done+lote.length} de ${pend.length} motivos…`;
+  const BATCH = 50, PARALELO = 5;
+  const lotes = [];
+  for(let i=0; i<pend.length; i+=BATCH) lotes.push(pend.slice(i, i+BATCH));
+  let done = 0, falhas = 0;
+
+  async function processa(lote){
+    try{
       const res = await fetch('/api/analyze', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ items: lote })
       });
-      if(!res.ok) throw new Error('API '+res.status+': '+(await res.text()).slice(0,200));
+      if(!res.ok) throw new Error('API '+res.status);
       const json = await res.json();
       (json.results||[]).forEach(r => { if(r.id && r.cat) iaCache[r.id] = String(r.cat).toUpperCase(); });
-      done += lote.length;
-      fill.style.width = Math.round(100*done/pend.length)+'%';
-      saveCache();
-      renderIA(filtered());
+    }catch(e){ falhas += lote.length; }
+    done += lote.length;
+    fill.style.width = Math.round(100*done/pend.length)+'%';
+    st.textContent = `Classificando ${done} de ${pend.length} motivos…`;
+    saveCache();
+    renderIA(filtered());
+  }
+
+  try{
+    for(let i=0; i<lotes.length; i+=PARALELO){
+      await Promise.all(lotes.slice(i, i+PARALELO).map(processa));
     }
-    st.textContent = `Concluído — ${done} motivos categorizados.`;
+    st.textContent = falhas
+      ? `Concluído com ${falhas} falha(s) — clique de novo para reprocessar o que faltou.`
+      : `Concluído — ${done} motivos categorizados.`;
+    if(falhas) st.classList.add('err');
   }catch(e){
     st.textContent = 'Falha na análise: '+e.message;
     st.classList.add('err');
