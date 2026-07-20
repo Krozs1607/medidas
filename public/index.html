@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medidas Disciplinares · Comunicação &amp; Desenvolvimento</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<style>
+:root{
+  --bg:#fdf9fa; --card:#ffffff; --border:#f3d5e0; --border-soft:#f9e8ef;
+  --text:#1e1b26; --muted:#8a8494; --faint:#b5aebf;
+  --rose:#f43f5e; --rose-strong:#e11d48; --rose-soft:#fde5ec; --rose-faint:#fdf0f5;
+  --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --info:#6366f1; --purple:#a855f7;
+  --shadow:0 1px 3px rgba(190,60,110,.06),0 8px 24px rgba(190,60,110,.07);
+  --r:18px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:14px/1.5 'Inter',-apple-system,'Segoe UI',sans-serif;min-height:100vh}
+.wrap{max-width:1320px;margin:0 auto;padding:0 24px 60px}
+
+/* header */
+.topbar{background:var(--card);border-bottom:1px solid var(--border-soft);margin:0 -24px 22px;padding:16px 32px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{width:44px;height:44px;border-radius:14px;background:var(--rose);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;flex-shrink:0}
+.brand h1{font-size:19px;font-weight:700;letter-spacing:-.02em}
+.brand .sub{color:var(--muted);font-size:12.5px}
+.topbar .spacer{flex:1}
+.pill{background:var(--rose-soft);color:var(--rose-strong);font-size:13px;font-weight:650;padding:9px 16px;border-radius:999px;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border)}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--rose)}
+
+.btn{background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 16px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:7px;font-family:inherit}
+.btn:hover{border-color:var(--rose);color:var(--rose-strong)}
+.btn.primary{background:var(--rose);border-color:var(--rose);color:#fff;box-shadow:0 4px 14px rgba(244,63,94,.35)}
+.btn.primary:hover{background:var(--rose-strong);color:#fff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible{outline:2px solid var(--rose);outline-offset:2px}
+
+/* dropzone */
+#dropzone{border:2px dashed var(--border);border-radius:24px;padding:56px 24px;text-align:center;cursor:pointer;transition:.2s;background:var(--card)}
+#dropzone:hover,#dropzone.over{border-color:var(--rose);background:var(--rose-faint)}
+#dropzone .ic{width:52px;height:52px;border-radius:16px;background:var(--rose-soft);display:inline-flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:12px}
+#dropzone .big{font-size:15.5px;font-weight:700;margin-bottom:4px}
+#dropzone .hint{color:var(--muted);font-size:12.5px}
+
+/* filtros */
+.filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.filterbar .flabel{color:var(--faint);font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-right:2px}
+.daterange{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px 12px}
+.daterange input{border:none;background:none;font:inherit;font-size:13px;font-weight:600;color:var(--text);width:118px}
+.daterange input:focus{outline:none;color:var(--rose-strong)}
+.daterange .arrow{color:var(--faint)}
+
+/* multiselect */
+.ms{position:relative}
+.ms-btn{background:var(--card);border:1px solid var(--border);border-radius:999px;padding:8px 14px;font-size:13.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-family:inherit;color:var(--text);transition:.15s}
+.ms-btn:hover{border-color:var(--rose)}
+.ms-btn .badge{background:var(--border-soft);color:var(--faint);font-size:11.5px;font-weight:650;padding:2px 9px;border-radius:999px;transition:.15s}
+.ms-btn.active{border-color:var(--rose);box-shadow:0 0 0 3px var(--rose-faint)}
+.ms-btn.active .badge{background:var(--rose);color:#fff}
+.ms-btn .chev{color:var(--faint);font-size:10px}
+.ms-panel{position:absolute;top:calc(100% + 6px);left:0;z-index:40;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow),0 12px 32px rgba(190,60,110,.14);min-width:230px;max-width:320px;max-height:320px;display:none;flex-direction:column;overflow:hidden}
+.ms.open .ms-panel{display:flex}
+.ms-head{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--border-soft)}
+.ms-head button{flex:1;background:var(--rose-faint);border:none;border-radius:8px;padding:5px;font-size:11.5px;font-weight:650;color:var(--rose-strong);cursor:pointer;font-family:inherit}
+.ms-head button:hover{background:var(--rose-soft)}
+.ms-list{overflow-y:auto;padding:6px}
+.ms-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:9px;cursor:pointer;font-size:13px}
+.ms-item:hover{background:var(--rose-faint)}
+.ms-item input{accent-color:var(--rose);width:15px;height:15px;cursor:pointer}
+.ms-item .cnt{margin-left:auto;color:var(--faint);font-size:11.5px;font-variant-numeric:tabular-nums}
+
+.showing{margin-left:auto;color:var(--muted);font-size:13px}
+.showing b{color:var(--rose-strong)}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:14px;margin:18px 0}
+.kpi{background:var(--card);border:1px solid var(--border-soft);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)}
+.kpi .top{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.kpi .ic{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;background:var(--rose-soft)}
+.kpi .l{color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;line-height:1.3}
+.kpi .v{font-size:27px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.kpi .d{color:var(--faint);font-size:11.5px;margin-top:2px}
+
+/* informativos */
+.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:20px}
+.insight{background:var(--card);border:1px solid var(--border-soft);border-radius:var(--r);padding:15px 16px;font-size:13px;box-shadow:var(--shadow);display:flex;gap:11px;align-items:flex-start}
+.insight .ic{width:30px;height:30px;border-radius:9px;background:var(--rose-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+.insight b{color:var(--rose-strong)}
+.sec-title{font-size:15px;font-weight:750;margin:6px 0 12px;display:flex;align-items:baseline;gap:9px}
+.sec-title .cs{color:var(--faint);font-size:12px;font-weight:500}
+
+/* grid de gráficos */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.card{background:var(--card);border:1px solid var(--border-soft);border-radius:var(--r);padding:20px;min-width:0;box-shadow:var(--shadow)}
+.card h3{font-size:13.5px;font-weight:700;margin-bottom:2px}
+.card .cs{color:var(--muted);font-size:12px;margin-bottom:14px}
+.card canvas{max-height:280px}
+.c6{grid-column:span 6} .c12{grid-column:span 12} .c4{grid-column:span 4} .c8{grid-column:span 8}
+@media(max-width:900px){.c6,.c4,.c8{grid-column:span 12}}
+
+/* IA */
+.ai-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.ai-status{color:var(--muted);font-size:12.5px}
+.ai-status.err{color:var(--bad)}
+.progress{flex:1;min-width:140px;height:6px;background:var(--rose-faint);border-radius:4px;overflow:hidden;display:none}
+.progress .fill{height:100%;width:0;background:var(--rose);transition:width .3s}
+
+.hidden{display:none!important}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+footer{margin-top:32px;color:var(--faint);font-size:11.5px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="logo">⚖</div>
+    <div class="brand">
+      <h1>Medidas Disciplinares</h1>
+      <div class="sub">Analytics do fluxo Holmes · Comunicação &amp; Desenvolvimento</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn hidden" id="btnReload">↺ Nova planilha</button>
+    <span class="pill hidden" id="pillCount"><span class="dot"></span><span id="pillCountTxt"></span></span>
+  </div>
+
+  <div id="dropzone">
+    <div class="ic">📊</div>
+    <div class="big">Anexe o export do Holmes</div>
+    <div class="hint">arraste ou clique — .xlsx do fluxo "RH - Medida Disciplinar"</div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" class="hidden">
+  </div>
+
+  <div id="app" class="hidden">
+    <div class="filterbar">
+      <span class="flabel">Filtros</span>
+      <div class="daterange">
+        <input type="date" id="fDe" aria-label="Criação de">
+        <span class="arrow">→</span>
+        <input type="date" id="fAte" aria-label="Criação até">
+      </div>
+      <div id="msContainer" style="display:contents"></div>
+      <button class="btn" id="btnClear">✕ Limpar</button>
+      <span class="showing">Exibindo <b id="showN">0</b> de <span id="showT">0</span></span>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="top"><div class="ic">📋</div><div class="l">Total de<br>medidas</div></div><div class="v" id="kTotal">–</div><div class="d" id="kTotalD"></div></div>
+      <div class="kpi"><div class="top"><div class="ic">⏱</div><div class="l">Demora média<br>de abertura</div></div><div class="v" id="kDemora">–</div><div class="d">situação → criação do chamado</div></div>
+      <div class="kpi"><div class="top"><div class="ic">📐</div><div class="l">Demora<br>mediana</div></div><div class="v" id="kDemoraMed">–</div><div class="d" id="kDemoraD"></div></div>
+      <div class="kpi"><div class="top"><div class="ic">🚫</div><div class="l">Taxa de<br>cancelamento</div></div><div class="v" id="kCancel">–</div><div class="d" id="kCancelD"></div></div>
+      <div class="kpi"><div class="top"><div class="ic">✅</div><div class="l">Tempo médio<br>do processo</div></div><div class="v" id="kAberto">–</div><div class="d">abertura → conclusão</div></div>
+    </div>
+
+    <div class="sec-title">Informativos <span class="cs">gerados automaticamente a partir do filtro atual</span></div>
+    <div class="insights" id="insights"></div>
+
+    <div class="grid">
+      <div class="card c8">
+        <h3>Medidas por mês</h3><div class="cs">por data de criação do chamado</div>
+        <canvas id="chMes"></canvas>
+      </div>
+      <div class="card c4">
+        <h3>Tipo de documento</h3><div class="cs">advertência · suspensão · desconto</div>
+        <canvas id="chTipo"></canvas>
+      </div>
+      <div class="card c6">
+        <h3>Demora na abertura do chamado</h3><div class="cs">dias entre a situação e a criação do chamado</div>
+        <canvas id="chDemora"></canvas>
+      </div>
+      <div class="card c6">
+        <h3>Empresas com mais medidas</h3><div class="cs">top 12 no recorte atual</div>
+        <canvas id="chEmpresa"></canvas>
+      </div>
+      <div class="card c6">
+        <h3>Departamentos</h3><div class="cs">departamento do colaborador</div>
+        <canvas id="chDepto"></canvas>
+      </div>
+      <div class="card c6">
+        <h3>Categorias dos motivos <span style="color:var(--rose)">✨ IA</span></h3>
+        <div class="cs">classificação por palavra-chave dos textos de advertência/suspensão</div>
+        <div class="ai-bar">
+          <button class="btn primary" id="btnIA">✨ Analisar motivos</button>
+          <div class="progress" id="iaProg"><div class="fill" id="iaFill"></div></div>
+          <span class="ai-status" id="iaStatus"></span>
+        </div>
+        <canvas id="chIA"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <footer>Processamento 100% local · a IA recebe apenas os textos de motivo, sem nomes ou CPFs</footer>
+</div>
+
+<script>
+Chart.register(ChartDataLabels);
+Chart.defaults.color = '#8a8494';
+Chart.defaults.borderColor = '#f9e8ef';
+Chart.defaults.font.family = "'Inter','Segoe UI',sans-serif";
+Chart.defaults.font.size = 11.5;
+Chart.defaults.plugins.legend.labels.boxWidth = 12;
+Chart.defaults.plugins.datalabels.display = false;
+
+const COLS = {
+  criacao:'Data criação', situacao:'Data que aconteceu a situação',
+  conclusao:'Data conclusão', status:'Status', fluxo:'Fluxo',
+  empresa:'Empresa', tipo:'Tipo de Documento',
+  depto:'Departamento do Colaborador',
+  motAdv:'Motivo da Advertência', motSus:'Motivo da Suspensão'
+};
+const PALETTE = ['#f43f5e','#a855f7','#6366f1','#f59e0b','#16a34a','#0ea5e9','#e879a8','#dc2626','#8b8fa3','#c084fc','#fb923c','#34d399'];
+
+// Gerências por bandeira — match por prefixo do nome normalizado da empresa
+const GERENCIAS = {
+  'Gerência Alixandre': ['COLUMBIA','INDIANA','BRIONE'],
+  'Gerência Tolentino': ['BAVIERA','GAULESA','DINASTIA','INGLATERRA','MANDARIM','DURANGO','TERRACOTA'],
+  'Gerência Marcello':  ['MARSELHA'],
+  'Gerência Marco':     ['FRANCESA'],
+  'Gerência Nestor':    ['OMURA','CANTONESA','ATLANTA'],
+};
+function gerenciaDe(empresa){
+  if(!empresa || empresa === 'NÃO INFORMADA') return 'Sem gerência';
+  for(const [ger, bandeiras] of Object.entries(GERENCIAS))
+    if(bandeiras.some(b => empresa.startsWith(b))) return ger;
+  return 'Sem gerência';
+}
+const DL_DARK = '#1e1b26';
+
+let rows = [], charts = {}, iaCache = {};
+
+/* ---------- parsing ----------
+   Datas do Holmes chegam em dois formatos de STRING:
+   "19/01/2026 16:51:31" (criação/conclusão) e "2026-01-14 00:00:00 UTC" (situação).
+   Parseamos SÓ a parte da data como data local — nunca new Date(string),
+   que aplicaria o UTC e recuaria o dia em BRT. */
+function parseDate(v){
+  if(v == null || v === '') return null;
+  if(typeof v === 'number'){
+    const d = XLSX.SSF.parse_date_code(v);
+    return d ? new Date(d.y, d.m-1, d.d) : null;
+  }
+  const s = String(v).trim();
+  let m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1]);
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return new Date(+m[1], +m[2]-1, +m[3]);
+  return null;
+}
+function parseDateTime(v){
+  if(v == null || v === '') return null;
+  const s = String(v).trim();
+  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})[ T](\d{2}):(\d{2}):(\d{2})/);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5], +m[6]);
+  return parseDate(v);
+}
+const norm = s => String(s ?? '').trim().toUpperCase().replace(/\s+/g,' ');
+const dayDiff = (a,b) => Math.round((b - a) / 86400000);
+
+function ingest(wb){
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const raw = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false});
+  rows = raw.map((r,i) => {
+    const criacao = parseDate(r[COLS.criacao]);
+    const situacao = parseDate(r[COLS.situacao]);
+    const criacaoDT = parseDateTime(r[COLS.criacao]);
+    const conclusaoDT = parseDateTime(r[COLS.conclusao]);
+    const motivo = (r[COLS.motAdv] || r[COLS.motSus] || '').toString().trim();
+    return {
+      i, criacao, situacao,
+      demora: (criacao && situacao) ? dayDiff(situacao, criacao) : null,
+      processoDias: (criacaoDT && conclusaoDT) ? (conclusaoDT - criacaoDT)/86400000 : null,
+      status: norm(r[COLS.status]) || '—',
+      fluxo: String(r[COLS.fluxo] ?? '—').trim(),
+      empresa: norm(r[COLS.empresa]) || 'NÃO INFORMADA',
+      gerencia: gerenciaDe(norm(r[COLS.empresa]) || 'NÃO INFORMADA'),
+      tipo: String(r[COLS.tipo] ?? 'Não informado').trim(),
+      depto: String(r[COLS.depto] ?? '').trim() || 'Não informado',
+      motivo,
+      mes: criacao ? criacao.getFullYear()+'-'+String(criacao.getMonth()+1).padStart(2,'0') : null
+    };
+  });
+  buildFilters();
+  render();
+  document.getElementById('dropzone').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('btnReload').classList.remove('hidden');
+  const p = document.getElementById('pillCount');
+  p.classList.remove('hidden');
+  document.getElementById('pillCountTxt').textContent = rows.length.toLocaleString('pt-BR')+' medidas carregadas';
+}
+
+/* ---------- multi-select ---------- */
+const MS_DEFS = [
+  { key:'gerencia', label:'Gerência' },
+  { key:'empresa', label:'Empresa' },
+  { key:'tipo',    label:'Tipo' },
+  { key:'status',  label:'Status' },
+  { key:'depto',   label:'Departamento' },
+  { key:'fluxo',   label:'Fluxo' },
+];
+const msState = {}; // key -> Set (vazio = todos)
+
+function buildFilters(){
+  const cont = document.getElementById('msContainer');
+  cont.innerHTML = '';
+  MS_DEFS.forEach(def => {
+    msState[def.key] = msState[def.key] || new Set();
+    const counts = new Map();
+    rows.forEach(r => counts.set(r[def.key], (counts.get(r[def.key])||0)+1));
+    const values = [...counts.keys()].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b),'pt-BR'));
+
+    const ms = document.createElement('div');
+    ms.className = 'ms';
+    ms.innerHTML = `
+      <button class="ms-btn" type="button" aria-haspopup="listbox">
+        ${def.label} <span class="badge">Todos</span> <span class="chev">▾</span>
+      </button>
+      <div class="ms-panel" role="listbox">
+        <div class="ms-head">
+          <button type="button" data-act="all">Marcar todos</button>
+          <button type="button" data-act="none">Limpar</button>
+        </div>
+        <div class="ms-list">
+          ${values.map(v => `<label class="ms-item"${def.key==='empresa' ? ` data-ger="${gerenciaDe(v)}"` : ''}><input type="checkbox" value="${String(v).replace(/"/g,'&quot;')}"><span>${v}</span><span class="cnt">${counts.get(v)}</span></label>`).join('')}
+        </div>
+      </div>`;
+    cont.appendChild(ms);
+
+    const btn = ms.querySelector('.ms-btn'), badge = ms.querySelector('.badge');
+    const boxes = [...ms.querySelectorAll('.ms-list input')];
+
+    const sync = () => {
+      const sel = msState[def.key];
+      boxes.forEach(b => b.checked = sel.has(b.value));
+      const n = sel.size;
+      badge.textContent = n === 0 ? 'Todos' : n === 1 ? [...sel][0].length > 14 ? [...sel][0].slice(0,13)+'…' : [...sel][0] : n+' selec.';
+      btn.classList.toggle('active', n > 0);
+    };
+    sync();
+
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const wasOpen = ms.classList.contains('open');
+      document.querySelectorAll('.ms.open').forEach(m => m.classList.remove('open'));
+      if(!wasOpen) ms.classList.add('open');
+    });
+    ms.querySelector('.ms-panel').addEventListener('click', e => e.stopPropagation());
+    boxes.forEach(b => b.addEventListener('change', () => {
+      b.checked ? msState[def.key].add(b.value) : msState[def.key].delete(b.value);
+      if(def.key === 'gerencia') syncEmpresaComGerencia();
+      sync(); render();
+    }));
+    ms.querySelector('[data-act=all]').addEventListener('click', () => {
+      const visiveis = boxes.filter(b => b.closest('.ms-item').style.display !== 'none');
+      msState[def.key] = new Set(visiveis.map(b=>b.value));
+      if(def.key === 'gerencia') syncEmpresaComGerencia();
+      sync(); render();
+    });
+    ms.querySelector('[data-act=none]').addEventListener('click', () => {
+      msState[def.key].clear();
+      if(def.key === 'gerencia') syncEmpresaComGerencia();
+      sync(); render();
+    });
+    ms._sync = sync;
+  });
+}
+document.addEventListener('click', () => document.querySelectorAll('.ms.open').forEach(m => m.classList.remove('open')));
+
+// Quando há gerência(s) selecionada(s), o painel de Empresa mostra só as lojas delas
+// e desmarca empresas que ficaram fora do recorte.
+function syncEmpresaComGerencia(){
+  const gers = msState.gerencia;
+  let mudou = false;
+  document.querySelectorAll('.ms-item[data-ger]').forEach(item => {
+    const visivel = gers.size === 0 || gers.has(item.dataset.ger);
+    item.style.display = visivel ? '' : 'none';
+    const box = item.querySelector('input');
+    if(!visivel && msState.empresa.has(box.value)){
+      msState.empresa.delete(box.value); mudou = true;
+    }
+  });
+  document.querySelectorAll('.ms').forEach(m => m._sync && m._sync());
+  return mudou;
+}
+
+function filtered(){
+  const g = id => document.getElementById(id).value;
+  const de = g('fDe') ? new Date(g('fDe')+'T00:00:00') : null;
+  const ate = g('fAte') ? new Date(g('fAte')+'T23:59:59') : null;
+  return rows.filter(r =>
+    MS_DEFS.every(def => {
+      const sel = msState[def.key];
+      return sel.size === 0 || sel.has(r[def.key]);
+    }) &&
+    (!de  || (r.criacao && r.criacao >= de)) &&
+    (!ate || (r.criacao && r.criacao <= ate))
+  );
+}
+
+/* ---------- render ---------- */
+const fmt = n => n.toLocaleString('pt-BR');
+const fmt1 = n => n.toLocaleString('pt-BR',{maximumFractionDigits:1});
+function median(a){ if(!a.length) return null; const s=[...a].sort((x,y)=>x-y), m=s.length>>1; return s.length%2 ? s[m] : (s[m-1]+s[m])/2; }
+function mkChart(id, cfg){
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), cfg);
+}
+function count(arr, key){
+  const m = new Map();
+  arr.forEach(r => { const k = typeof key==='function'?key(r):r[key]; if(k!=null) m.set(k,(m.get(k)||0)+1); });
+  return m;
+}
+
+function render(){
+  const data = filtered();
+
+  const demoras = data.map(r=>r.demora).filter(d => d !== null && d >= 0 && d <= 365);
+  const mediaD = demoras.length ? demoras.reduce((a,b)=>a+b,0)/demoras.length : null;
+  const medD = median(demoras);
+  const cancel = data.filter(r=>r.status==='CANCELED').length;
+  const proc = data.map(r=>r.processoDias).filter(d=>d!==null && d>=0);
+  const mediaP = proc.length ? proc.reduce((a,b)=>a+b,0)/proc.length : null;
+
+  showN.textContent = fmt(data.length); showT.textContent = fmt(rows.length);
+  kTotal.textContent = fmt(data.length);
+  kTotalD.textContent = `${fmt(data.filter(r=>r.status==='OPENED').length)} em aberto`;
+  kDemora.textContent = mediaD===null ? '–' : fmt1(mediaD)+'d';
+  kDemoraMed.textContent = medD===null ? '–' : fmt1(medD)+'d';
+  kDemoraD.textContent = `${fmt(demoras.length)} registros com ambas as datas`;
+  kCancel.textContent = data.length ? fmt1(100*cancel/data.length)+'%' : '–';
+  kCancelD.textContent = `${fmt(cancel)} cancelados`;
+  kAberto.textContent = mediaP===null ? '–' : fmt1(mediaP)+'d';
+
+  renderInsights(data, {mediaD, medD, demoras, cancel});
+
+  const meses = [...count(data,'mes').entries()].filter(e=>e[0]).sort();
+  mkChart('chMes',{type:'bar',data:{labels:meses.map(e=>{const[y,m]=e[0].split('-');return ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][+m-1]+'/'+y.slice(2);}),
+    datasets:[{data:meses.map(e=>e[1]),backgroundColor:'#f43f5e',borderRadius:7,maxBarThickness:38}]},
+    options:{plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'top',color:DL_DARK,font:{weight:700}}},
+      scales:{y:{beginAtZero:true,grace:'10%'},x:{grid:{display:false}}}}});
+
+  const tipos = [...count(data,'tipo').entries()].sort((a,b)=>b[1]-a[1]);
+  mkChart('chTipo',{type:'doughnut',data:{labels:tipos.map(t=>t[0]),
+    datasets:[{data:tipos.map(t=>t[1]),backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff'}]},
+    options:{cutout:'62%',plugins:{legend:{position:'bottom'},
+      datalabels:{display:true,color:'#fff',font:{weight:700},formatter:(v,c)=>{const t=c.dataset.data.reduce((a,b)=>a+b,0);return t&&v/t>.04?Math.round(100*v/t)+'%':''}}}}});
+
+  const buckets = [['Mesmo dia',d=>d===0],['1–2 dias',d=>d>=1&&d<=2],['3–7 dias',d=>d>=3&&d<=7],['8–15 dias',d=>d>=8&&d<=15],['16–30 dias',d=>d>=16&&d<=30],['+30 dias',d=>d>30]];
+  mkChart('chDemora',{type:'bar',data:{labels:buckets.map(b=>b[0]),
+    datasets:[{data:buckets.map(b=>demoras.filter(b[1]).length),
+      backgroundColor:['#16a34a','#4ade80','#f59e0b','#fb923c','#f43f5e','#dc2626'],borderRadius:7,maxBarThickness:52}]},
+    options:{plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'top',color:DL_DARK,font:{weight:700}}},
+      scales:{y:{beginAtZero:true,grace:'10%'},x:{grid:{display:false}}}}});
+
+  const emp = [...count(data,'empresa').entries()].sort((a,b)=>b[1]-a[1]).slice(0,12);
+  mkChart('chEmpresa',{type:'bar',data:{labels:emp.map(e=>e[0]),
+    datasets:[{data:emp.map(e=>e[1]),backgroundColor:'#a855f7',borderRadius:7,maxBarThickness:22}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'right',color:DL_DARK,font:{weight:700}}},
+      scales:{x:{beginAtZero:true,grace:'12%'},y:{grid:{display:false},ticks:{autoSkip:false,font:{size:10.5}}}}}});
+
+  const dep = [...count(data,'depto').entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
+  mkChart('chDepto',{type:'bar',data:{labels:dep.map(e=>e[0]),
+    datasets:[{data:dep.map(e=>e[1]),backgroundColor:'#6366f1',borderRadius:7,maxBarThickness:22}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'right',color:DL_DARK,font:{weight:700}}},
+      scales:{x:{beginAtZero:true,grace:'12%'},y:{grid:{display:false},ticks:{autoSkip:false,font:{size:10.5}}}}}});
+
+  renderIA(data);
+}
+
+/* ---------- informativos ---------- */
+function renderInsights(data, k){
+  const el = document.getElementById('insights');
+  const ins = [];
+  if(data.length){
+    const emp = [...count(data,'empresa').entries()].sort((a,b)=>b[1]-a[1])[0];
+    if(emp) ins.push(['🏢', `A empresa <b>${emp[0]}</b> concentra <b>${fmt1(100*emp[1]/data.length)}%</b> das medidas (${fmt(emp[1])} de ${fmt(data.length)}).`]);
+    const dep = [...count(data.filter(r=>r.depto!=='Não informado'),'depto').entries()].sort((a,b)=>b[1]-a[1])[0];
+    if(dep) ins.push(['👥', `O departamento com mais medidas é <b>${dep[0]}</b>, com <b>${fmt(dep[1])}</b> registros.`]);
+    if(k.mediaD !== null && k.medD !== null && k.mediaD > k.medD * 2)
+      ins.push(['⏳', `A demora média (<b>${fmt1(k.mediaD)}d</b>) é bem maior que a mediana (<b>${fmt1(k.medD)}d</b>): poucos chamados muito tardios puxam a média para cima.`]);
+    const tardios = k.demoras.filter(d=>d>30).length;
+    if(tardios) ins.push(['🚨', `<b>${fmt(tardios)}</b> chamado(s) foram abertos <b>mais de 30 dias</b> depois da situação — atenção ao registro tempestivo.`]);
+    if(data.length && k.cancel/data.length > .3)
+      ins.push(['🚫', `<b>${fmt1(100*k.cancel/data.length)}%</b> das medidas foram canceladas — vale investigar os motivos de desistência.`]);
+  }
+  el.innerHTML = ins.slice(0,4).map(i=>`<div class="insight"><div class="ic">${i[0]}</div><div>${i[1]}</div></div>`).join('') ||
+    '<div class="insight"><div class="ic">🔍</div><div>Nenhum registro no recorte atual.</div></div>';
+}
+
+/* ---------- IA ---------- */
+function renderIA(data){
+  const cats = new Map();
+  data.forEach(r => { const c = iaCache[hashText(r.motivo)]; if(c) cats.set(c,(cats.get(c)||0)+1); });
+  const entries = [...cats.entries()].sort((a,b)=>b[1]-a[1]);
+  const el = document.getElementById('chIA');
+  if(!entries.length){ if(charts.chIA){charts.chIA.destroy();delete charts.chIA;} el.style.display='none'; return; }
+  el.style.display='';
+  mkChart('chIA',{type:'bar',data:{labels:entries.map(e=>e[0]),
+    datasets:[{data:entries.map(e=>e[1]),backgroundColor:'#f43f5e',borderRadius:7,maxBarThickness:22}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'right',color:DL_DARK,font:{weight:700}}},
+      scales:{x:{beginAtZero:true,grace:'12%'},y:{grid:{display:false},ticks:{autoSkip:false,font:{size:10.5}}}}}});
+}
+
+function hashText(s){ let h=0; for(let i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))|0;} return 'm'+(h>>>0).toString(36); }
+function loadCache(){ try{ iaCache = JSON.parse(localStorage.getItem('disc_ia_cache')||'{}'); }catch(e){ iaCache={}; } }
+function saveCache(){ try{ localStorage.setItem('disc_ia_cache', JSON.stringify(iaCache)); }catch(e){} }
+
+async function analisarIA(){
+  const btn = document.getElementById('btnIA'), st = document.getElementById('iaStatus');
+  const prog = document.getElementById('iaProg'), fill = document.getElementById('iaFill');
+  const data = filtered();
+  const pend = [], seen = new Set();
+  data.forEach(r => {
+    if(!r.motivo || r.motivo.length < 4) return;
+    const h = hashText(r.motivo);
+    if(iaCache[h] || seen.has(h)) return;
+    seen.add(h);
+    pend.push({ id:h, text:r.motivo.slice(0,400) });
+  });
+  if(!pend.length){ st.textContent='Todos os motivos do recorte já estão categorizados.'; st.classList.remove('err'); renderIA(data); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Analisando…';
+  prog.style.display='block'; st.classList.remove('err');
+  const BATCH = 40; let done = 0;
+  try{
+    for(let i=0; i<pend.length; i+=BATCH){
+      const lote = pend.slice(i, i+BATCH);
+      st.textContent = `Classificando ${done+lote.length} de ${pend.length} motivos…`;
+      const res = await fetch('/api/analyze', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ items: lote })
+      });
+      if(!res.ok) throw new Error('API '+res.status+': '+(await res.text()).slice(0,200));
+      const json = await res.json();
+      (json.results||[]).forEach(r => { if(r.id && r.cat) iaCache[r.id] = String(r.cat).toUpperCase(); });
+      done += lote.length;
+      fill.style.width = Math.round(100*done/pend.length)+'%';
+      saveCache();
+      renderIA(filtered());
+    }
+    st.textContent = `Concluído — ${done} motivos categorizados.`;
+  }catch(e){
+    st.textContent = 'Falha na análise: '+e.message;
+    st.classList.add('err');
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = '✨ Analisar motivos';
+    prog.style.display='none'; fill.style.width='0';
+  }
+}
+
+/* ---------- eventos ---------- */
+const dz = document.getElementById('dropzone'), fi = document.getElementById('fileInput');
+dz.addEventListener('click', ()=>fi.click());
+dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave', ()=>dz.classList.remove('over'));
+dz.addEventListener('drop', e=>{e.preventDefault();dz.classList.remove('over');handleFile(e.dataTransfer.files[0]);});
+fi.addEventListener('change', ()=>handleFile(fi.files[0]));
+function handleFile(f){
+  if(!f) return;
+  const rd = new FileReader();
+  rd.onload = e => ingest(XLSX.read(new Uint8Array(e.target.result), {type:'array'}));
+  rd.readAsArrayBuffer(f);
+}
+['fDe','fAte'].forEach(id => document.getElementById(id).addEventListener('change', render));
+document.getElementById('btnClear').addEventListener('click', ()=>{
+  ['fDe','fAte'].forEach(id=>document.getElementById(id).value='');
+  Object.values(msState).forEach(s=>s.clear());
+  syncEmpresaComGerencia();
+  render();
+});
+document.getElementById('btnIA').addEventListener('click', analisarIA);
+document.getElementById('btnReload').addEventListener('click', ()=>{
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('btnReload').classList.add('hidden');
+  document.getElementById('pillCount').classList.add('hidden');
+  dz.classList.remove('hidden'); fi.value='';
+});
+loadCache();
+</script>
+</body>
+</html>
